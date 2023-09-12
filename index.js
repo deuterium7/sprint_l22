@@ -3,27 +3,41 @@ const path = require('path');
 const fs   = require('fs');
 const axios = require('axios');
 
-const getTodos = () => {
-	return axios.get('https://jsonplaceholder.typicode.com/todos')
+const ALLOWED_QUERIES = [
+	{ query: 'posts', link: 'https://jsonplaceholder.typicode.com/posts' },
+	{ query: 'comments', link: 'https://jsonplaceholder.typicode.com/comments' },
+	{ query: 'albums', link: 'https://jsonplaceholder.typicode.com/albums' },
+	{ query: 'photos', link: 'https://jsonplaceholder.typicode.com/photos' },
+	{ query: 'todos', link: 'https://jsonplaceholder.typicode.com/todos' },
+	{ query: 'users', link: 'https://jsonplaceholder.typicode.com/users' },
+];
+
+const getDataByLink = (link) => {
+	return axios.get(link)
 		.then(r => r.data)
-		.catch((e) => {
-			console.log('Не удалось получить данные из API');
-		})
+		.catch((e) => { console.log('Не удалось получить данные из API') })
+}
+
+const getStoragePath = (fPath = '') => {
+	return fPath ? path.resolve(__dirname, 'storage', fPath) :
+		path.resolve(__dirname, 'storage');
 }
 
 const storeToJsonFile = (data, filename) => {
 	try {
-		fs.writeFile(path.resolve(__dirname, `${filename}.json`), JSON.stringify(data), (e, content) => {});
-	} catch (e) {
-		console.log('Не удалось записать файл');
-	}
+		fs.mkdir(getStoragePath(), { recursive: true }, (e) => {});
+		fs.writeFile(getStoragePath(`${filename}.json`), JSON.stringify(data), (e, content) => {});
+	} catch (e) { console.log('Не удалось записать файл') }
 }
 
 const server = http.createServer((request, response) => {
 	response.writeHead(200, {'Content-Type': 'text/plain'});
 
-	getTodos()
-		.then((data) => { storeToJsonFile(data, 'todos') })
+	const allowQuery = ALLOWED_QUERIES.find(
+		item => item.query === request.url.replace('/', '')
+	);
+
+	if (allowQuery) getDataByLink(allowQuery.link).then((data) => { storeToJsonFile(data, allowQuery.query) });
 
 	response.end(new Date().toDateString());
 });
